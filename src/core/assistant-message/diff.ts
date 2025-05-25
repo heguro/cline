@@ -150,11 +150,11 @@ function blockAnchorFallbackMatch(originalContent: string, searchContent: string
  *
  * The diff format is a custom structure that uses three markers to define changes:
  *
- *   <<<<<<< SEARCH
+ *   ------- SEARCH
  *   [Exact content to find in the original file]
  *   =======
  *   [Content to replace with]
- *   >>>>>>> REPLACE
+ *   +++++++ REPLACE
  *
  * Behavior and Assumptions:
  * 1. The file is processed chunk-by-chunk. Each chunk of `diffContent` may contain
@@ -176,8 +176,8 @@ function blockAnchorFallbackMatch(originalContent: string, searchContent: string
  *
  * 4. Applying Changes:
  *    - Before encountering the "=======" marker, lines are accumulated as search content.
- *    - After "=======" and before ">>>>>>> REPLACE", lines are accumulated as replacement content.
- *    - Once the block is complete (">>>>>>> REPLACE"), the matched section in the original
+ *    - After "=======" and before "+++++++ REPLACE", lines are accumulated as replacement content.
+ *    - Once the block is complete ("+++++++ REPLACE"), the matched section in the original
  *      file is replaced with the accumulated replacement lines, and the position in the original
  *      file is advanced.
  *
@@ -244,15 +244,15 @@ async function constructNewFileContentV1(diffContent: string, originalContent: s
 	if (
 		lines.length > 0 &&
 		(lastLine.startsWith("<") || lastLine.startsWith("=") || lastLine.startsWith(">")) &&
-		lastLine !== "<<<<<<< SEARCH" &&
+		lastLine !== "------- SEARCH" &&
 		lastLine !== "=======" &&
-		lastLine !== ">>>>>>> REPLACE"
+		lastLine !== "+++++++ REPLACE"
 	) {
 		lines.pop()
 	}
 
 	for (const line of lines) {
-		if (line === "<<<<<<< SEARCH") {
+		if (line === "------- SEARCH") {
 			inSearch = true
 			currentSearchContent = ""
 			currentReplaceContent = ""
@@ -320,7 +320,7 @@ async function constructNewFileContentV1(diffContent: string, originalContent: s
 			continue
 		}
 
-		if (line === ">>>>>>> REPLACE") {
+		if (line === "+++++++ REPLACE") {
 			// Finished one replace block
 
 			// // Remove the artificially added linebreak in the last line of the REPLACE block
@@ -480,7 +480,7 @@ class NewFileContentConstructor {
 		pendingNonStandardLineLimit: number,
 	): number {
 		let removeLineCount = 0
-		if (line === "<<<<<<< SEARCH") {
+		if (line === "------- SEARCH") {
 			removeLineCount = this.trimPendingNonStandardTrailingEmptyLines(pendingNonStandardLineLimit)
 			if (removeLineCount > 0) {
 				pendingNonStandardLineLimit = pendingNonStandardLineLimit - removeLineCount
@@ -498,7 +498,7 @@ class NewFileContentConstructor {
 			}
 			this.activateReplaceState()
 			this.beforeReplace()
-		} else if (line === ">>>>>>> REPLACE") {
+		} else if (line === "+++++++ REPLACE") {
 			if (!this.isReplacingActive()) {
 				this.tryFixReplaceBlock(pendingNonStandardLineLimit)
 				canWritependingNonStandardLines && (this.pendingNonStandardLines.length = 0)
@@ -610,7 +610,7 @@ class NewFileContentConstructor {
 		const searchTagIndex = this.findLastMatchingLineIndex(searchTagRegexp, lineLimit)
 		if (searchTagIndex !== -1) {
 			let fixLines = this.pendingNonStandardLines.slice(searchTagIndex, lineLimit)
-			fixLines[0] = "<<<<<<< SEARCH"
+			fixLines[0] = "------- SEARCH"
 			for (const line of fixLines) {
 				removeLineCount += this.internalProcessLine(line, false, searchTagIndex)
 			}
@@ -666,7 +666,7 @@ class NewFileContentConstructor {
 			// 	removeLineCount += this.tryFixReplaceBlock(replaceEndTagIndex)
 			// }
 			let fixLines = this.pendingNonStandardLines.slice(replaceEndTagIndex - removeLineCount, lineLimit - removeLineCount)
-			fixLines[fixLines.length - 1] = ">>>>>>> REPLACE"
+			fixLines[fixLines.length - 1] = "+++++++ REPLACE"
 			for (const line of fixLines) {
 				removeLineCount += this.internalProcessLine(line, false, replaceEndTagIndex - removeLineCount)
 			}
@@ -707,9 +707,9 @@ export async function constructNewFileContentV2(diffContent: string, originalCon
 	if (
 		lines.length > 0 &&
 		(lastLine.startsWith("<") || lastLine.startsWith("=") || lastLine.startsWith(">")) &&
-		lastLine !== "<<<<<<< SEARCH" &&
+		lastLine !== "------- SEARCH" &&
 		lastLine !== "=======" &&
-		lastLine !== ">>>>>>> REPLACE"
+		lastLine !== "+++++++ REPLACE"
 	) {
 		lines.pop()
 	}
